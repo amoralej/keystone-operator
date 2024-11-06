@@ -208,6 +208,40 @@ spec:
         workspace: workspace
       - name: git-basic-auth
         workspace: git-auth
+    - name: generate-dockerfile
+      params:
+      - name: path
+        value: $(workspaces.source.path)º
+      runAfter:
+      - prefetch-dependencies
+      taskSpec:
+        params:
+        - name: path
+          value: $(workspaces.output.path)
+        steps:
+        - name: run-make
+          image: quay.io/centos/centos:stream9
+          env:
+          - name: WORKSPACE_OUTPUT_PATH
+            value: $(params.path)
+          - name: PARAM_SUBDIRECTORY
+            value: source
+          script: |
+            #!/bin/bash
+            dnf install -y make
+            set -x
+            ls -l /workspace/source
+            pushd ${WORKSPACE_OUTPUT_PATH}
+            cd /workspace/source/source
+            make bundle
+      when:
+      - input: $(tasks.init.results.build)
+        operator: in
+        values:
+        - "true"
+      workspaces:
+      - name: source
+        workspace: workspace
     - name: build-container
       params:
       - name: IMAGE
@@ -230,7 +264,7 @@ spec:
       - name: BUILD_ARGS_FILE
         value: $(params.build-args-file)
       runAfter:
-      - prefetch-dependencies
+      - generate-dockerfile
       taskRef:
         params:
         - name: name
